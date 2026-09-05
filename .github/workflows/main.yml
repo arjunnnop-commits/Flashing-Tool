@@ -24,6 +24,13 @@ jobs:
       with:
         gradle-version: '8.4'
 
+    - name: Download Standalone Fastboot ARM64 Binary
+      run: |
+        mkdir -p assets_temp
+        # Download static fastboot binary for Android ARM64
+        curl -sL "https://github.com/nohajc/termux-adb/raw/master/bin/fastboot" -o assets_temp/fastboot || true
+        chmod +x assets_temp/fastboot
+
     - name: Create Clean Android Workspace
       run: |
         rm -rf app settings.gradle build.gradle gradlew gradlew.bat gradle
@@ -42,10 +49,10 @@ jobs:
         echo "plugins { id 'com.android.application' }" > app/build.gradle
         echo "android { namespace 'com.infinix.tool'; compileSdk 34; defaultConfig { applicationId 'com.infinix.tool'; minSdk 24; targetSdk 34; versionCode 1; versionName '1.0' } }" >> app/build.gradle
 
-        # 4. AndroidManifest.xml (Clean Single String to avoid XML parse error)
+        # 4. AndroidManifest.xml
         echo '<?xml version="1.0" encoding="utf-8"?><manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.infinix.tool"><uses-permission android:name="android.permission.INTERNET"/><uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/><uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/><application android:label="Infinix GT10 Pro Tool" android:allowBackup="true" android:supportsRtl="true" android:theme="@android:style/Theme.NoTitleBar.Fullscreen"><activity android:name=".MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity></application></manifest>' > app/src/main/AndroidManifest.xml
 
-        # 5. MainActivity.java
+        # 5. MainActivity.java with Binary Extraction logic
         cat << 'EOF' > app/src/main/java/com/infinix/tool/MainActivity.java
         package com.infinix.tool;
 
@@ -56,12 +63,20 @@ jobs:
         import android.webkit.WebViewClient;
         import java.io.BufferedReader;
         import java.io.DataOutputStream;
+        import java.io.File;
+        import java.io.FileOutputStream;
+        import java.io.InputStream;
         import java.io.InputStreamReader;
 
         public class MainActivity extends Activity {
+            private String binDir;
+
             @Override
             protected void onCreate(Bundle savedInstanceState) {
                 super.onCreate(savedInstanceState);
+                binDir = getFilesDir().getAbsolutePath();
+                extractFastbootBinary();
+
                 WebView webView = new WebView(this);
                 setContentView(webView);
                 webView.getSettings().setJavaScriptEnabled(true);
@@ -72,14 +87,38 @@ jobs:
                 webView.loadUrl("file:///android_asset/index.html");
             }
 
+            private void extractFastbootBinary() {
+                try {
+                    File fastbootFile = new File(binDir, "fastboot");
+                    if (!fastbootFile.exists()) {
+                        InputStream in = getAssets().open("fastboot");
+                        FileOutputStream out = new FileOutputStream(fastbootFile);
+                        byte[] buffer = new byte[1024];
+                        int read;
+                        while ((read = in.read(buffer)) != -1) {
+                            out.write(buffer, 0, read);
+                        }
+                        in.close();
+                        out.flush();
+                        out.close();
+                    }
+                    Runtime.getRuntime().exec("chmod 755 " + fastbootFile.getAbsolutePath()).waitFor();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+
             public class WebAppInterface {
                 @JavascriptInterface
                 public String executeRootCommand(String command) {
                     try {
+                        String fastbootPath = binDir + "/fastboot";
+                        String finalCommand = command.replace("fastboot", fastbootPath);
+
                         Process process = Runtime.getRuntime().exec("su");
                         DataOutputStream os = new DataOutputStream(process.getOutputStream());
                         BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-                        os.writeBytes(command + "\nexit\n");
+                        os.writeBytes(finalCommand + "\nexit\n");
                         os.flush();
                         StringBuilder output = new StringBuilder();
                         String line;
@@ -96,7 +135,11 @@ jobs:
         }
         EOF
 
-        # 6. Copy HTML Interface
+        # 6. Copy HTML & Fastboot Binary
+        if [ -f "assets_temp/fastboot" ]; then
+          cp assets_temp/fastboot app/src/main/assets/
+        fi
+
         if [ -f "index.html" ]; then
           cp index.html app/src/main/assets/
         else
@@ -111,3 +154,4 @@ jobs:
       with:
         name: Infinix-GT10-Tool-APK
         path: app/build/outputs/apk/debug/app-debug.apk
+        
