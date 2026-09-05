@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infinix GT 10 Pro Flashing Tool</title>
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --glass-bg: rgba(255, 255, 255, 0.04);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --accent-glow: #00f2fe;
+            --accent-gold: #fbbf24;
+            --accent-danger: #f87171;
+            --accent-green: #34d399;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+            padding: 15px 0;
+        }
+
+        body::before, body::after {
+            content: '';
+            position: absolute;
+            width: 350px;
+            height: 350px;
+            border-radius: 50%;
+            filter: blur(90px);
+            z-index: -1;
+            opacity: 0.35;
+        }
+        body::before { background: #00f2fe; top: -100px; left: -100px; }
+        body::after { background: #fbbf24; bottom: -100px; right: -100px; }
+
+        .container {
+            width: 92%;
+            max-width: 480px;
+            height: calc(100vh - 100px);
+            background: var(--glass-bg);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid var(--glass-border);
+            border-radius: 28px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 1px solid var(--glass-border);
+            padding-bottom: 12px;
+        }
+        .title {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: var(--accent-gold);
+            text-shadow: 0 0 10px rgba(251, 191, 36, 0.3);
+            letter-spacing: 0.5px;
+        }
+        .credits {
+            font-size: 0.68rem;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+        .credits span { color: var(--accent-danger); font-weight: 600; }
+
+        .content-area {
+            flex-grow: 1;
+            margin: 15px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow-y: auto;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 12px 10px;
+            color: var(--text-primary);
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 0 12px rgba(0, 242, 254, 0.25);
+        }
+        .btn-danger {
+            border-color: rgba(248, 113, 113, 0.3);
+            color: #fca5a5;
+        }
+        .btn-danger:hover {
+            background: rgba(248, 113, 113, 0.15);
+            box-shadow: 0 0 12px rgba(248, 113, 113, 0.3);
+        }
+
+        .terminal {
+            background: rgba(0, 0, 0, 0.55);
+            border: 1px solid var(--glass-border);
+            border-radius: 18px;
+            padding: 14px;
+            height: 210px;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--accent-glow);
+            line-height: 1.45;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.8);
+        }
+
+        .nav-pill {
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid var(--glass-border);
+            width: 92%;
+            max-width: 480px;
+            height: 60px;
+            border-radius: 35px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 0 10px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            font-size: 0.65rem;
+            gap: 3px;
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-item.active {
+            background: rgba(255, 255, 255, 0.12);
+            color: var(--accent-glow);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        }
+
+        .nav-item svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <div class="title">⚡ INFINIX GT 10 PRO TOOL ⚡</div>
+            <div class="credits">DEV: <span>@yooitachiijod</span> | TESTER: <span>@pyn_exe</span></div>
+        </div>
+
+        <div class="content-area">
+            <div class="grid">
+                <button class="btn btn-danger" onclick="unlockBootloader()">Unlock Bootloader</button>
+                <button class="btn" onclick="executeCommand('devices')">Check Fastboot</button>
+                <button class="btn" onclick="flashStockRom()">Flash Stock ROM</button>
+                <button class="btn" onclick="showRebootMenu()">Reboot Options</button>
+            </div>
+            
+            <div class="terminal" id="terminalLog">
+                [INIT] Infinix GT 10 Pro Engine Loaded...<br>
+                [INFO] Ready for fastboot flashing operations.<br>
+                ----------------------------------------
+            </div>
+        </div>
+    </div>
+
+    <div class="nav-pill">
+        <div class="nav-item active" onclick="switchTab(this)">
+            <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+            Main
+        </div>
+        <div class="nav-item" onclick="executeCommand('devices')">
+            <svg viewBox="0 0 24 24"><path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/></svg>
+            Check Device
+        </div>
+        <div class="nav-item" onclick="executeCommand('reboot')">
+            <svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+            Reboot
+        </div>
+    </div>
+
+    <script>
+        function log(msg, color = '#00f2fe') {
+            const logBox = document.getElementById('terminalLog');
+            logBox.innerHTML += `<br><span style="color: ${color};">${msg}</span>`;
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        function switchTab(element) {
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            element.classList.add('active');
+        }
+
+        function sendToBackend(actionCommand) {
+            log(`> Executing: ${actionCommand}...`, '#9ca3af');
+
+            // Native Android APK Bridge Connection
+            if (window.AndroidHost && window.AndroidHost.executeRootCommand) {
+                let res = window.AndroidHost.executeRootCommand(`fastboot ${actionCommand}`);
+                log(res || "Command Executed Successfully", '#34d399');
+                return;
+            }
+
+            // Express Web Server Fallback (Termux)
+            fetch('/execute', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ command: actionCommand })
+            })
+            .then(res => res.json())
+            .then(data => {
+                let formatted = data.output ? data.output.replace(/\n/g, '<br>') : 'Completed';
+                log(formatted, '#34d399');
+            })
+            .catch(err => {
+                log('Error: Server/Bridge Connection Failed', '#f87171');
+            });
+        }
+
+        function executeCommand(cmd) {
+            if (cmd === 'devices') sendToBackend('devices');
+            else if (cmd === 'reboot') sendToBackend('reboot');
+            else if (cmd === 'reboot-bootloader') sendToBackend('reboot bootloader');
+            else if (cmd === 'reboot-recovery') sendToBackend('reboot recovery');
+        }
+
+        function unlockBootloader() {
+            if (confirm("WARNING: Bootloader unlocking will WIPE ALL DATA!\nAre you sure you want to proceed?")) {
+                log("[!] INITIATING BOOTLOADER UNLOCK...", '#f87171');
+                sendToBackend('flashing unlock');
+                sendToBackend('oem unlock');
+            }
+        }
+
+        function showRebootMenu() {
+            log("<br>=== REBOOT OPTIONS ===", '#fbbf24');
+            log("[1] System -> reboot", '#f3f4f6');
+            log("[2] Bootloader -> reboot bootloader", '#f3f4f6');
+            log("[3] Recovery -> reboot recovery", '#f3f4f6');
+            
+            let choice = prompt("Select Reboot Mode:\n1. System\n2. Bootloader\n3. Recovery");
+            if (choice === '1') sendToBackend('reboot');
+            else if (choice === '2') sendToBackend('reboot bootloader');
+            else if (choice === '3') sendToBackend('reboot recovery');
+        }
+
+        function flashStockRom() {
+            log("<br>=== STARTING FULL FLASH SEQUENCE ===", '#fbbf24');
+            log("[1/4] Switching active slot to 'a'...", '#f3f4f6');
+            sendToBackend('set_active a');
+
+            log("[2/4] Flashing boot partitions...", '#f3f4f6');
+            sendToBackend('flash --slot=all boot /sdcard/INFINIX/boot.img');
+            sendToBackend('flash --slot=all vendor_boot /sdcard/INFINIX/vendor_boot.img');
+
+            log("[3/4] Flashing super partition...", '#f3f4f6');
+            sendToBackend('flash super /sdcard/INFINIX/super.img');
+
+            log("[4/4] Flashing preloader & additional partitions...", '#f3f4f6');
+            const partitions = ['dtbo', 'gz', 'lk', 'logo', 'md1img', 'pi_img', 'scp', 'spmfw', 'sspm', 'tee', 'vbmeta', 'vbmeta_system', 'vbmeta_vendor', 'mcupm', 'dpm'];
+            partitions.forEach(p => {
+                sendToBackend(`flash --slot=all ${p} /sdcard/INFINIX/${p}.img`);
+            });
+
+            log("Erasing userdata & cache...", '#f87171');
+            sendToBackend('erase userdata');
+            
+            log("<br>🎉 FLASHING PROCESS COMPLETED! 🎉", '#34d399');
+            sendToBackend('reboot');
+        }
+    </script>
+</body>
+</html>
