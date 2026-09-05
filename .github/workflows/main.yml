@@ -19,13 +19,90 @@ jobs:
         distribution: 'zulu'
         java-version: '17'
 
-    - name: Prepare Assets & Source
-      run: |
-        mkdir -p app/src/main/assets app/src/main/java/com/infinix/tool
-        if [ -f "index.html" ]; then
-          cp index.html app/src/main/assets/
-        fi
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
 
+    - name: Generate Complete Android Project
+      run: |
+        rm -rf build.gradle settings.gradle app
+        mkdir -p app/src/main/assets app/src/main/java/com/infinix/tool app/src/main/res/layout
+
+        # 1. settings.gradle
+        cat << 'EOF' > settings.gradle
+        include ':app'
+        EOF
+
+        # 2. Root build.gradle
+        cat << 'EOF' > build.gradle
+        buildscript {
+            repositories {
+                google()
+                mavenCentral()
+            }
+            dependencies {
+                classpath 'com.android.tools.build:gradle:8.1.1'
+            }
+        }
+        allprojects {
+            repositories {
+                google()
+                mavenCentral()
+            }
+        }
+        EOF
+
+        # 3. App build.gradle
+        cat << 'EOF' > app/build.gradle
+        plugins {
+            id 'com.android.application'
+        }
+
+        android {
+            namespace 'com.infinix.tool'
+            compileSdk 34
+
+            defaultConfig {
+                applicationId "com.infinix.tool"
+                minSdk 24
+                targetSdk 34
+                versionCode 1
+                versionName "1.0"
+            }
+
+            buildTypes {
+                release {
+                    minifyEnabled false
+                }
+            }
+        }
+        EOF
+
+        # 4. AndroidManifest.xml
+        cat << 'EOF' > app/src/main/AndroidManifest.xml
+        <?xml version="1.0" encoding="utf-8"?>
+        <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+            package="com.infinix.tool">
+            <uses-permission android.permission.INTERNET />
+            <uses-permission android.permission.READ_EXTERNAL_STORAGE />
+            <uses-permission android.permission.WRITE_EXTERNAL_STORAGE />
+            <application
+                android:label="Infinix GT10 Pro Tool"
+                android:allowBackup="true"
+                android:supportsRtl="true"
+                android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
+                <activity
+                    android:name=".MainActivity"
+                    android:exported="true">
+                    <intent-filter>
+                        <action android:name="android.intent.action.MAIN" />
+                        <category android:name="android.intent.category.LAUNCHER" />
+                    </intent-filter>
+                </activity>
+            </application>
+        </manifest>
+        EOF
+
+        # 5. MainActivity.java
         cat << 'EOF' > app/src/main/java/com/infinix/tool/MainActivity.java
         package com.infinix.tool;
 
@@ -48,6 +125,7 @@ jobs:
                 webView.getSettings().setDomStorageEnabled(true);
                 webView.setWebViewClient(new WebViewClient());
                 webView.addJavascriptInterface(new WebAppInterface(), "AndroidHost");
+                
                 webView.loadUrl("file:///android_asset/index.html");
             }
 
@@ -75,15 +153,20 @@ jobs:
         }
         EOF
 
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v3
+        # 6. Copy HTML Interface
+        if [ -f "index.html" ]; then
+          cp index.html app/src/main/assets/
+        else
+          echo "<html><body><h1>Infinix GT10 Pro Tool</h1></body></html>" > app/src/main/assets/index.html
+        fi
 
-    - name: Build Debug APK
-      run: gradle assembleDebug
+    - name: Generate Wrapper & Build
+      run: |
+        gradle wrapper --gradle-version 8.0
+        ./gradlew assembleDebug
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
         name: Infinix-GT10-Tool-APK
         path: app/build/outputs/apk/debug/app-debug.apk
-        
