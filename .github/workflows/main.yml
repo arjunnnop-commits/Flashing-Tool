@@ -19,14 +19,12 @@ jobs:
         distribution: 'zulu'
         java-version: '17'
 
-    - name: Setup Gradle & Project Structure
+    - name: Setup Android Project Files
       run: |
         mkdir -p app/src/main/assets
         mkdir -p app/src/main/java/com/infinix/tool
         mkdir -p app/src/main/res/layout
-        mkdir -p app/src/main/res/values
 
-        # Copy HTML Asset
         if [ -f "index.html" ]; then
           cp index.html app/src/main/assets/
         else
@@ -36,17 +34,12 @@ jobs:
         # Android Manifest
         cat << 'EOF' > app/src/main/AndroidManifest.xml
         <?xml version="1.0" encoding="utf-8"?>
-        <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-            package="com.infinix.tool">
+        <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.infinix.tool">
             <uses-permission android.permission.INTERNET />
-            <application
-                android:label="Infinix GT10 Pro Tool"
-                android:allowBackup="true"
-                android:supportsRtl="true"
-                android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
-                <activity
-                    android:name=".MainActivity"
-                    android:exported="true">
+            <uses-permission android.permission.READ_EXTERNAL_STORAGE />
+            <uses-permission android.permission.WRITE_EXTERNAL_STORAGE />
+            <application android:label="Infinix GT10 Pro Tool" android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
+                <activity android:name=".MainActivity" android:exported="true">
                     <intent-filter>
                         <action android:name="android.intent.action.MAIN" />
                         <category android:name="android.intent.category.LAUNCHER" />
@@ -60,27 +53,18 @@ jobs:
         cat << 'EOF' > app/src/main/res/layout/activity_main.xml
         <?xml version="1.0" encoding="utf-8"?>
         <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent">
-            <WebView
-                android:id="@+id/webView"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent" />
+            android:layout_width="match_parent" android:layout_height="match_parent">
+            <WebView android:id="@+id/webView" android:layout_width="match_parent" android:layout_height="match_parent" />
         </RelativeLayout>
         EOF
 
-        # Java MainActivity
+        # MainActivity Java
         cat << 'EOF' > app/src/main/java/com/infinix/tool/MainActivity.java
         package com.infinix.tool;
-
         import android.app.Activity;
         import android.os.Bundle;
-        import android.webkit.JavascriptInterface;
-        import android.webkit.WebView;
-        import android.webkit.WebViewClient;
-        import java.io.BufferedReader;
-        import java.io.DataOutputStream;
-        import java.io.InputStreamReader;
+        import android.webkit.*;
+        import java.io.*;
 
         public class MainActivity extends Activity {
             @Override
@@ -88,12 +72,10 @@ jobs:
                 super.onCreate(savedInstanceState);
                 WebView webView = new WebView(this);
                 setContentView(webView);
-                
                 webView.getSettings().setJavaScriptEnabled(true);
                 webView.getSettings().setDomStorageEnabled(true);
                 webView.setWebViewClient(new WebViewClient());
                 webView.addJavascriptInterface(new WebAppInterface(), "AndroidHost");
-                
                 webView.loadUrl("file:///android_asset/index.html");
             }
 
@@ -108,9 +90,7 @@ jobs:
                         os.flush();
                         StringBuilder output = new StringBuilder();
                         String line;
-                        while ((line = reader.readLine()) != null) {
-                            output.append(line).append("\n");
-                        }
+                        while ((line = reader.readLine()) != null) output.append(line).append("\n");
                         process.waitFor();
                         return output.toString().trim();
                     } catch (Exception e) {
@@ -124,44 +104,24 @@ jobs:
         # Root build.gradle
         cat << 'EOF' > build.gradle
         buildscript {
-            repositories {
-                google()
-                mavenCentral()
-            }
-            dependencies {
-                classpath 'com.android.tools.build:gradle:8.1.1'
-            }
+            repositories { google(); mavenCentral() }
+            dependencies { classpath 'com.android.tools.build:gradle:8.1.1' }
         }
-        allprojects {
-            repositories {
-                google()
-                mavenCentral()
-            }
-        }
+        allprojects { repositories { google(); mavenCentral() } }
         EOF
 
         # App build.gradle
         cat << 'EOF' > app/build.gradle
-        plugins {
-            id 'com.android.application'
-        }
-
+        plugins { id 'com.android.application' }
         android {
             namespace 'com.infinix.tool'
             compileSdk 34
-
             defaultConfig {
                 applicationId "com.infinix.tool"
                 minSdk 24
                 targetSdk 34
                 versionCode 1
                 versionName "1.0"
-            }
-
-            buildTypes {
-                release {
-                    minifyEnabled false
-                }
             }
         }
         EOF
@@ -171,14 +131,15 @@ jobs:
         include ':app'
         EOF
 
-    - name: Setup Gradle Wrapper
-      run: gradle wrapper --gradle-version 8.0
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v3
 
     - name: Build Debug APK
-      run: ./gradlew assembleDebug
+      run: gradle assembleDebug
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
         name: Infinix-GT10-Tool-APK
         path: app/build/outputs/apk/debug/app-debug.apk
+        
