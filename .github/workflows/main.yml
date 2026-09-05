@@ -19,39 +19,44 @@ jobs:
         distribution: 'zulu'
         java-version: '17'
 
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v3
+      with:
+        gradle-version: '8.4'
 
-    - name: Generate Complete Android Project
+    - name: Create Clean Android Workspace
       run: |
-        rm -rf build.gradle settings.gradle app
-        mkdir -p app/src/main/assets app/src/main/java/com/infinix/tool app/src/main/res/layout
+        rm -rf app settings.gradle build.gradle gradlew gradlew.bat gradle
+        mkdir -p app/src/main/assets app/src/main/java/com/infinix/tool
 
         # 1. settings.gradle
         cat << 'EOF' > settings.gradle
+        pluginManagement {
+            repositories {
+                google()
+                mavenCentral()
+                gradlePluginPortal()
+            }
+        }
+        dependencyResolutionManagement {
+            repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+            repositories {
+                google()
+                mavenCentral()
+            }
+        }
+        rootProject.name = "InfinixTool"
         include ':app'
         EOF
 
-        # 2. Root build.gradle
+        # 2. build.gradle
         cat << 'EOF' > build.gradle
-        buildscript {
-            repositories {
-                google()
-                mavenCentral()
-            }
-            dependencies {
-                classpath 'com.android.tools.build:gradle:8.1.1'
-            }
-        }
-        allprojects {
-            repositories {
-                google()
-                mavenCentral()
-            }
+        plugins {
+            id 'com.android.application' version '8.1.1' apply false
         }
         EOF
 
-        # 3. App build.gradle
+        # 3. app/build.gradle
         cat << 'EOF' > app/build.gradle
         plugins {
             id 'com.android.application'
@@ -67,12 +72,6 @@ jobs:
                 targetSdk 34
                 versionCode 1
                 versionName "1.0"
-            }
-
-            buildTypes {
-                release {
-                    minifyEnabled false
-                }
             }
         }
         EOF
@@ -160,10 +159,8 @@ jobs:
           echo "<html><body><h1>Infinix GT10 Pro Tool</h1></body></html>" > app/src/main/assets/index.html
         fi
 
-    - name: Generate Wrapper & Build
-      run: |
-        gradle wrapper --gradle-version 8.0
-        ./gradlew assembleDebug
+    - name: Build Debug APK
+      run: gradle assembleDebug
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
