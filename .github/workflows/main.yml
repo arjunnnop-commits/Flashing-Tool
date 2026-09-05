@@ -19,52 +19,24 @@ jobs:
         distribution: 'zulu'
         java-version: '17'
 
-    - name: Setup Android Project Files
+    - name: Prepare Assets & Source
       run: |
-        mkdir -p app/src/main/assets
-        mkdir -p app/src/main/java/com/infinix/tool
-        mkdir -p app/src/main/res/layout
-
+        mkdir -p app/src/main/assets app/src/main/java/com/infinix/tool
         if [ -f "index.html" ]; then
           cp index.html app/src/main/assets/
-        else
-          echo "<html><body><h1>Infinix GT10 Pro Tool</h1></body></html>" > app/src/main/assets/index.html
         fi
 
-        # Android Manifest
-        cat << 'EOF' > app/src/main/AndroidManifest.xml
-        <?xml version="1.0" encoding="utf-8"?>
-        <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.infinix.tool">
-            <uses-permission android.permission.INTERNET />
-            <uses-permission android.permission.READ_EXTERNAL_STORAGE />
-            <uses-permission android.permission.WRITE_EXTERNAL_STORAGE />
-            <application android:label="Infinix GT10 Pro Tool" android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
-                <activity android:name=".MainActivity" android:exported="true">
-                    <intent-filter>
-                        <action android:name="android.intent.action.MAIN" />
-                        <category android:name="android.intent.category.LAUNCHER" />
-                    </intent-filter>
-                </activity>
-            </application>
-        </manifest>
-        EOF
-
-        # Layout XML
-        cat << 'EOF' > app/src/main/res/layout/activity_main.xml
-        <?xml version="1.0" encoding="utf-8"?>
-        <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-            android:layout_width="match_parent" android:layout_height="match_parent">
-            <WebView android:id="@+id/webView" android:layout_width="match_parent" android:layout_height="match_parent" />
-        </RelativeLayout>
-        EOF
-
-        # MainActivity Java
         cat << 'EOF' > app/src/main/java/com/infinix/tool/MainActivity.java
         package com.infinix.tool;
+
         import android.app.Activity;
         import android.os.Bundle;
-        import android.webkit.*;
-        import java.io.*;
+        import android.webkit.JavascriptInterface;
+        import android.webkit.WebView;
+        import android.webkit.WebViewClient;
+        import java.io.BufferedReader;
+        import java.io.DataOutputStream;
+        import java.io.InputStreamReader;
 
         public class MainActivity extends Activity {
             @Override
@@ -90,7 +62,9 @@ jobs:
                         os.flush();
                         StringBuilder output = new StringBuilder();
                         String line;
-                        while ((line = reader.readLine()) != null) output.append(line).append("\n");
+                        while ((line = reader.readLine()) != null) {
+                            output.append(line).append("\n");
+                        }
                         process.waitFor();
                         return output.toString().trim();
                     } catch (Exception e) {
@@ -99,36 +73,6 @@ jobs:
                 }
             }
         }
-        EOF
-
-        # Root build.gradle
-        cat << 'EOF' > build.gradle
-        buildscript {
-            repositories { google(); mavenCentral() }
-            dependencies { classpath 'com.android.tools.build:gradle:8.1.1' }
-        }
-        allprojects { repositories { google(); mavenCentral() } }
-        EOF
-
-        # App build.gradle
-        cat << 'EOF' > app/build.gradle
-        plugins { id 'com.android.application' }
-        android {
-            namespace 'com.infinix.tool'
-            compileSdk 34
-            defaultConfig {
-                applicationId "com.infinix.tool"
-                minSdk 24
-                targetSdk 34
-                versionCode 1
-                versionName "1.0"
-            }
-        }
-        EOF
-
-        # settings.gradle
-        cat << 'EOF' > settings.gradle
-        include ':app'
         EOF
 
     - name: Setup Gradle
